@@ -6,7 +6,7 @@ from app.github.pr_creator import PRCreator
 from app.schemas.api import PRRequest, PRResponse
 from fastapi import APIRouter, HTTPException, status
 
-router = APIRouter(prefix="/api", tags=["github"])
+router = APIRouter(tags=["github"])
 
 
 @router.post(

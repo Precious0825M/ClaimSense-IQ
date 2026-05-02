@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     app_name: str = Field(default="ProcessDoctor", description="Application name")
     debug: bool = Field(default=False, description="Debug mode")
     log_level: str = Field(default="INFO", description="Logging level")
+    use_mock_mode: bool = Field(default=True, description="Use mock responses for development")
     
     # Server
     backend_host: str = Field(default="0.0.0.0", description="Backend host")
@@ -32,28 +33,44 @@ class Settings(BaseSettings):
         description="Allowed CORS origins (comma-separated)"
     )
     
-    # IBM Granite API
+    # IBM Granite API (watsonx.ai)
     granite_api_key: str = Field(
         default="",
-        description="IBM Granite API key"
+        description="IBM watsonx.ai API key"
     )
     granite_api_url: str = Field(
-        default="https://api.granite.ibm.com/v1",
-        description="IBM Granite API URL"
+        default="https://us-south.ml.cloud.ibm.com/ml/v1",
+        description="IBM watsonx.ai API URL"
     )
     granite_model: str = Field(
-        default="granite-13b-chat-v2",
+        default="ibm/granite-13b-chat-v2",
         description="Granite model to use"
     )
+    granite_project_id: str = Field(
+        default="",
+        description="IBM watsonx.ai Project ID"
+    )
+    granite_space_id: str = Field(
+        default="",
+        description="IBM watsonx.ai Space ID (deployment space)"
+    )
     
-    # IBM Bob API
+    # IBM Bob API (watsonx.ai)
     bob_api_key: str = Field(
         default="",
-        description="IBM Bob API key"
+        description="IBM watsonx.ai API key for Bob"
     )
     bob_api_url: str = Field(
-        default="https://api.bob.ibm.com/v1",
-        description="IBM Bob API URL"
+        default="https://us-south.ml.cloud.ibm.com/ml/v1",
+        description="IBM watsonx.ai API URL for Bob"
+    )
+    bob_project_id: str = Field(
+        default="",
+        description="IBM watsonx.ai Project ID for Bob"
+    )
+    bob_space_id: str = Field(
+        default="",
+        description="IBM watsonx.ai Space ID for Bob"
     )
     
     # IBM watsonx Orchestrate

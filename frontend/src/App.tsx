@@ -5,6 +5,7 @@ import InputSection from './sections/InputSection';
 import DiagnoseSection from './sections/DiagnoseSection';
 import PrescribeSection from './sections/PrescribeSection';
 import TreatSection from './sections/TreatSection';
+import { AnalyzeResponse, FixResponse, PRResponse } from './services/api';
 
 export type Phase = 'input' | 'diagnose' | 'prescribe' | 'treat';
 
@@ -31,12 +32,31 @@ const PHASE_INDEX: Record<Phase, number> = {
 const App: React.FC = () => {
   const [phase, setPhase] = useState<Phase>('input');
   const [inputValue, setInputValue] = useState('');
+  const [inputType, setInputType] = useState<'text' | 'github'>('text');
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  
+  // API response state
+  const [analysisData, setAnalysisData] = useState<AnalyzeResponse | null>(null);
+  const [fixData, setFixData] = useState<FixResponse | null>(null);
+  const [prData, setPRData] = useState<PRResponse | null>(null);
 
-  const handleDiagnose = (text: string) => {
+  const handleDiagnose = (text: string, type: 'text' | 'github') => {
     setInputValue(text);
+    setInputType(type);
     setHasAnalyzed(true);
     setPhase('diagnose');
+  };
+
+  const handleAnalysisComplete = (data: AnalyzeResponse) => {
+    setAnalysisData(data);
+  };
+
+  const handleFixComplete = (data: FixResponse) => {
+    setFixData(data);
+  };
+
+  const handlePRComplete = (data: PRResponse) => {
+    setPRData(data);
   };
 
   return (
@@ -67,23 +87,39 @@ const App: React.FC = () => {
             </TabList>
             <TabPanels>
               <TabPanel>
-                <InputSection onDiagnose={handleDiagnose} />
+                <InputSection
+                  onDiagnose={handleDiagnose}
+                />
               </TabPanel>
               <TabPanel>
                 <DiagnoseSection
                   inputDescription={inputValue}
+                  inputType={inputType}
                   onContinue={() => setPhase('prescribe')}
+                  onAnalysisComplete={handleAnalysisComplete}
+                  analysisData={analysisData}
                 />
               </TabPanel>
               <TabPanel>
-                <PrescribeSection onApprove={() => setPhase('treat')} />
+                <PrescribeSection
+                  onApprove={() => setPhase('treat')}
+                  analysisData={analysisData}
+                  onFixComplete={handleFixComplete}
+                  fixData={fixData}
+                />
               </TabPanel>
               <TabPanel>
                 <TreatSection
+                  fixData={fixData}
+                  onPRComplete={handlePRComplete}
+                  prData={prData}
                   onRestart={() => {
                     setPhase('input');
                     setHasAnalyzed(false);
                     setInputValue('');
+                    setAnalysisData(null);
+                    setFixData(null);
+                    setPRData(null);
                   }}
                 />
               </TabPanel>

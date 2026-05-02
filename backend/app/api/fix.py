@@ -7,7 +7,7 @@ from app.pipeline.orchestrator import WorkflowOrchestrator
 from app.schemas.api import FixRequest, FixResponse
 from fastapi import APIRouter, HTTPException, status
 
-router = APIRouter(prefix="/api", tags=["optimization"])
+router = APIRouter(tags=["optimization"])
 
 
 @router.post(

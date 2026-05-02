@@ -4,7 +4,7 @@ import { ArrowRight } from '@carbon/icons-react';
 import { EXAMPLE_PROMPTS } from '../data/demo-data';
 
 interface InputSectionProps {
-  onDiagnose: (input: string) => void;
+  onDiagnose: (input: string, type: 'text' | 'github') => void;
 }
 
 /**
@@ -23,7 +23,7 @@ const InputSection: React.FC<InputSectionProps> = ({ onDiagnose }) => {
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onDiagnose(mode === 'text' ? textValue : urlValue);
+    onDiagnose(mode === 'text' ? textValue : urlValue, mode);
   };
 
   return (

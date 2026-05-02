@@ -1,5 +1,5 @@
-import React from 'react';
-import { Button, Tag } from '@carbon/react';
+import React, { useEffect, useState } from 'react';
+import { Button, Tag, Loading } from '@carbon/react';
 import { ArrowRight } from '@carbon/icons-react';
 import MetricCard from '../components/MetricCard';
 import WorkflowGraph from '../components/WorkflowGraph';
@@ -9,19 +9,92 @@ import {
   CURRENT_METRICS,
   OPTIMIZED_METRICS,
 } from '../data/demo-data';
+import { api, AnalyzeResponse, FixResponse } from '../services/api';
 
 interface PrescribeSectionProps {
   onApprove: () => void;
+  analysisData: AnalyzeResponse | null;
+  onFixComplete: (data: FixResponse) => void;
+  fixData: FixResponse | null;
 }
 
 /**
  * PHASE 3 - PRESCRIBE
  * Side-by-side before/after view. The numbers tell the story.
  */
-const PrescribeSection: React.FC<PrescribeSectionProps> = ({ onApprove }) => {
-  const timeReduction = Math.round(
-    ((CURRENT_METRICS.cycleTime - OPTIMIZED_METRICS.cycleTime) / CURRENT_METRICS.cycleTime) * 100
-  );
+const PrescribeSection: React.FC<PrescribeSectionProps> = ({
+  onApprove,
+  analysisData,
+  onFixComplete,
+  fixData
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Only generate fix if we have analysis data but no fix data yet
+    if (analysisData && !fixData) {
+      generateFix();
+    }
+  }, [analysisData]);
+
+  const generateFix = async () => {
+    if (!analysisData) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await api.generateFix({
+        analysis_id: analysisData.analysis_id,
+        optimization_strategy: 'balanced',
+      });
+      
+      onFixComplete(result);
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate optimization');
+      console.error('Fix generation error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section style={{ paddingTop: 'var(--pd-space-07)', textAlign: 'center' }}>
+        <Loading description="Generating optimization..." withOverlay={false} />
+        <h2 style={{ marginTop: 'var(--pd-space-06)' }}>Bob is optimizing your workflow...</h2>
+        <p className="pd-text-secondary" style={{ marginTop: 'var(--pd-space-03)' }}>
+          Generating an optimized pipeline based on the identified bottlenecks.
+        </p>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section style={{ paddingTop: 'var(--pd-space-07)' }}>
+        <Tag type="red">Optimization failed</Tag>
+        <h2 style={{ marginTop: 'var(--pd-space-04)' }}>Unable to generate optimization</h2>
+        <p className="pd-text-secondary" style={{ marginTop: 'var(--pd-space-03)' }}>
+          {error}
+        </p>
+        <Button
+          kind="primary"
+          onClick={generateFix}
+          style={{ marginTop: 'var(--pd-space-06)' }}
+        >
+          Retry optimization
+        </Button>
+      </section>
+    );
+  }
+
+  // Calculate metrics from API data or use demo data
+  const timeReduction = fixData?.improvements?.efficiency_gain
+    ? parseInt(fixData.improvements.efficiency_gain)
+    : Math.round(((CURRENT_METRICS.cycleTime - OPTIMIZED_METRICS.cycleTime) / CURRENT_METRICS.cycleTime) * 100);
+  
   const minutesSaved = CURRENT_METRICS.cycleTime - OPTIMIZED_METRICS.cycleTime;
   const hoursSavedPerWeek = Math.round((minutesSaved * CURRENT_METRICS.runsPerWeek) / 60);
 

@@ -4,6 +4,7 @@ import logging
 from typing import Any, Dict
 
 from app.agents.llm_client import GraniteClient
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ class FixerAgent:
     """AI agent for generating optimized workflows"""
     
     def __init__(self):
-        self.client = GraniteClient()
+        self.client = GraniteClient() if not settings.use_mock_mode else None
         self.system_prompt = self._load_system_prompt()
     
     def _load_system_prompt(self) -> str:
@@ -40,6 +41,11 @@ class FixerAgent:
             Optimized workflow and changes
         """
         logger.info(f"Generating fix with {strategy} strategy")
+        
+        # Use mock mode for development
+        if settings.use_mock_mode:
+            logger.info("Using mock fix generation (USE_MOCK_MODE=true)")
+            return self._get_mock_fix(analysis_id, strategy)
         
         # TODO: Retrieve analysis results
         
@@ -70,6 +76,48 @@ Provide:
 2. List of changes made
 3. Expected improvements
 """
+    
+    def _get_mock_fix(self, analysis_id: str, strategy: str) -> Dict[str, Any]:
+        """Return mock fix for development"""
+        return {
+            "workflow": {
+                "name": "Optimized CI/CD Pipeline",
+                "on": ["push", "pull_request"],
+                "jobs": {
+                    "test": {
+                        "runs-on": "ubuntu-latest",
+                        "strategy": {
+                            "matrix": {
+                                "node-version": ["18.x", "20.x"]
+                            }
+                        },
+                        "steps": [
+                            {"uses": "actions/checkout@v3"},
+                            {"uses": "actions/cache@v3", "with": {"path": "node_modules", "key": "${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}"}},
+                            {"run": "npm ci"},
+                            {"run": "npm test"}
+                        ]
+                    }
+                }
+            },
+            "changes": [
+                {
+                    "type": "optimization",
+                    "description": "Added dependency caching to reduce build time"
+                },
+                {
+                    "type": "parallelization",
+                    "description": "Parallelized tests across Node.js versions"
+                },
+                {
+                    "type": "automation",
+                    "description": "Removed manual approval step for staging deployments"
+                }
+            ],
+            "time_saved": "25 minutes",
+            "efficiency_gain": "62%",
+            "diff": "--- original.yml\n+++ optimized.yml\n@@ -10,6 +10,12 @@\n+      - uses: actions/cache@v3\n+        with:\n+          path: node_modules"
+        }
     
     def _parse_response(self, response: str) -> Dict[str, Any]:
         """Parse AI response into structured format"""

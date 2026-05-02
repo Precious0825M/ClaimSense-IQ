@@ -7,7 +7,7 @@ from app.pipeline.orchestrator import WorkflowOrchestrator
 from app.schemas.api import AnalyzeRequest, AnalyzeResponse
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
-router = APIRouter(prefix="/api", tags=["analysis"])
+router = APIRouter(tags=["analysis"])
 
 
 @router.post(

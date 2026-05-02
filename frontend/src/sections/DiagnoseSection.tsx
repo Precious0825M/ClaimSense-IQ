@@ -1,14 +1,18 @@
-import React from 'react';
-import { Button, Tag, Tile } from '@carbon/react';
+import React, { useEffect, useState } from 'react';
+import { Button, Tag, Tile, Loading } from '@carbon/react';
 import { ArrowRight, Warning } from '@carbon/icons-react';
 import MetricCard from '../components/MetricCard';
 import ReasoningPanel from '../components/ReasoningPanel';
 import WorkflowGraph from '../components/WorkflowGraph';
 import { CURRENT_WORKFLOW, CURRENT_METRICS, BOB_REASONING_STEPS, BOTTLENECKS } from '../data/demo-data';
+import { api, AnalyzeResponse } from '../services/api';
 
 interface DiagnoseSectionProps {
   inputDescription: string;
+  inputType: 'text' | 'github';
   onContinue: () => void;
+  onAnalysisComplete: (data: AnalyzeResponse) => void;
+  analysisData: AnalyzeResponse | null;
 }
 
 /**
@@ -16,11 +20,82 @@ interface DiagnoseSectionProps {
  * Hero moment. Visual workflow graph + metrics + Bob reasoning + bottleneck list.
  * This is where users feel the system "thinking" through real data.
  */
-const DiagnoseSection: React.FC<DiagnoseSectionProps> = ({ onContinue }) => {
+const DiagnoseSection: React.FC<DiagnoseSectionProps> = ({
+  inputDescription,
+  inputType,
+  onContinue,
+  onAnalysisComplete,
+  analysisData
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Only run analysis if we don't have data yet
+    if (!analysisData && inputDescription) {
+      analyzeWorkflow();
+    }
+  }, [inputDescription, inputType]);
+
+  const analyzeWorkflow = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await api.analyzeWorkflow({
+        workflow_input: inputDescription,
+        source_type: inputType,
+      });
+      
+      onAnalysisComplete(result);
+    } catch (err: any) {
+      setError(err.message || 'Failed to analyze workflow');
+      console.error('Analysis error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section style={{ paddingTop: 'var(--pd-space-07)', textAlign: 'center' }}>
+        <Loading description="Analyzing workflow..." withOverlay={false} />
+        <h2 style={{ marginTop: 'var(--pd-space-06)' }}>Bob is analyzing your workflow...</h2>
+        <p className="pd-text-secondary" style={{ marginTop: 'var(--pd-space-03)' }}>
+          This may take a few moments as we identify bottlenecks and optimization opportunities.
+        </p>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section style={{ paddingTop: 'var(--pd-space-07)' }}>
+        <Tag type="red">Analysis failed</Tag>
+        <h2 style={{ marginTop: 'var(--pd-space-04)' }}>Unable to analyze workflow</h2>
+        <p className="pd-text-secondary" style={{ marginTop: 'var(--pd-space-03)' }}>
+          {error}
+        </p>
+        <Button
+          kind="primary"
+          onClick={analyzeWorkflow}
+          style={{ marginTop: 'var(--pd-space-06)' }}
+        >
+          Retry analysis
+        </Button>
+      </section>
+    );
+  }
+
+  // Use API data if available, otherwise fall back to demo data
+  const bottlenecks = analysisData?.bottlenecks || BOTTLENECKS;
+  const metrics = analysisData?.metrics || CURRENT_METRICS;
+  const bottleneckCount = bottlenecks.length;
+
   return (
     <section style={{ paddingTop: 'var(--pd-space-07)' }}>
       <div style={{ marginBottom: 'var(--pd-space-07)' }}>
-        <Tag type="red" renderIcon={Warning}>3 bottlenecks identified</Tag>
+        <Tag type="red" renderIcon={Warning}>{bottleneckCount} bottleneck{bottleneckCount !== 1 ? 's' : ''} identified</Tag>
         <h2 style={{ marginTop: 'var(--pd-space-04)', marginBottom: 'var(--pd-space-03)' }}>
           Diagnosis: your CI/CD pipeline
         </h2>
@@ -40,9 +115,18 @@ const DiagnoseSection: React.FC<DiagnoseSectionProps> = ({ onContinue }) => {
         role="region"
         aria-label="Current workflow metrics"
       >
-        <MetricCard label="Cycle time" value={CURRENT_METRICS.cycleTime} unit="min" variant="alert" />
-        <MetricCard label="Manual steps" value={CURRENT_METRICS.manualSteps} variant="alert" />
-        <MetricCard label="Bottlenecks" value={CURRENT_METRICS.bottlenecks} variant="alert" />
+        <MetricCard
+          label="Cycle time"
+          value={'current_duration' in metrics && typeof metrics.current_duration === 'string' ? metrics.current_duration : CURRENT_METRICS.cycleTime}
+          unit={'current_duration' in metrics && typeof metrics.current_duration === 'string' ? '' : 'min'}
+          variant="alert"
+        />
+        <MetricCard
+          label="Efficiency score"
+          value={'efficiency_score' in metrics && metrics.efficiency_score !== undefined ? `${metrics.efficiency_score}%` : 'N/A'}
+          variant="alert"
+        />
+        <MetricCard label="Bottlenecks" value={bottleneckCount} variant="alert" />
         <MetricCard label="Pipeline runs / week" value={CURRENT_METRICS.runsPerWeek} />
       </div>
 
@@ -80,7 +164,7 @@ const DiagnoseSection: React.FC<DiagnoseSectionProps> = ({ onContinue }) => {
             Identified bottlenecks
           </div>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {BOTTLENECKS.map((b) => {
+            {bottlenecks.map((b) => {
               const sevColor =
                 b.severity === 'critical' ? 'var(--pd-color-error)' :
                 b.severity === 'medium' ? 'var(--pd-color-warning)' :
